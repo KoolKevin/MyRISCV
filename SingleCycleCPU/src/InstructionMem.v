@@ -1,5 +1,7 @@
+`timescale 1ns/1ps
+
 module InstructionMem(
-    input   [5:0] address,  // max 64 indirizzi  
+    input [5:0] address,  // max 64 indirizzi  
     output [31:0] instruction
 );
     // array che modella la memoria contenente le istruzioni
@@ -13,4 +15,3 @@ module InstructionMem(
     assign instruction = memory[address];   
 
 endmodule
-
