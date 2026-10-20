@@ -13,7 +13,7 @@ module DataMem(
 
     // inizializziamo la memoria con il contenuto di un file
     initial begin
-        $readmemh("datamem_h.txt", memory);
+        $readmemh("DataMem_h.txt", memory);
     end
 
 	assign readData = memory[address];
