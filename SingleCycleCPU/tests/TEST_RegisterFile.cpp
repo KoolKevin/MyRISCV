@@ -49,17 +49,17 @@ int main(int argc, char** argv) {
     // testo tutti i registri in ordine
     for (int i = 1; i < 32; i++) {
         // prima scrivo il registro ...
-        rf.we3 = 1;
-        rf.a3 = i;
-        rf.wd3 = i*10;
+        rf.writeEnable = 1;
+        rf.addressDestReg = i;
+        rf.destRegData = i*10;
         tick(rf, tfp);
         // e poi lo leggo 
-        rf.we3 = 0;         
-        rf.a1 = i;
-        rf.a2 = i;
+        rf.writeEnable = 0;         
+        rf.addressSourceReg1 = i;
+        rf.addressSourceReg2 = i;
         tick(rf, tfp);
 
-        check(i, rf.rd1, rf.rd2, i * 10);
+        check(i, rf.sourceReg1Data, rf.sourceReg2Data, i * 10);
     }
     tfp.dump(sim_time); 
 
