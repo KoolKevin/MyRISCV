@@ -14,7 +14,7 @@ module ImmExtensionUnit(
             2'b00: immExtended = {{20{instr[31]}}, instr[31:20]};
 
             // S−type (stores)
-             2'b01: immExtended = {{20{instr[31]}}, instr[31:25], instr[11:7]};
+            2'b01: immExtended = {{20{instr[31]}}, instr[31:25], instr[11:7]};
 
             // B−type (branches)
             2'b10: immExtended = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};

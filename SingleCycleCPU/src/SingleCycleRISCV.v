@@ -2,32 +2,32 @@
 
 module SingleCycleRISCV(
     input clk,
-    input reset,
+    input reset
 );
     reg [31:0] PC;
     wire [31:0] instruction;
     wire [31:0] immExtended;
-    wire [31:0] destRegData,
-    wire [31:0] sourceReg1Data,
-    wire [31:0] sourceReg2Data,
+    wire [31:0] destRegData;
+    wire [31:0] sourceReg1Data;
+    wire [31:0] sourceReg2Data;
     wire [31:0] ALUOperand2;
     wire [31:0] ALUResult;
     wire ALUResultIsZero;
     wire [31:0] dataMemReadData;
     // segnali della control unit
-    wire RFWriteEnable,
-    wire [1:0] immSrc,
-    wire ALUSrc2,
-    wire dataMemWriteEnable,
-    wire writebackSrc,
-    wire [2:0] ALUOpcode,
-    wire nextPCSrc
+    wire RFWriteEnable;
+    wire [1:0] immSrc;
+    wire ALUSrc2;
+    wire dataMemWriteEnable;
+    wire writebackSrc;
+    wire [2:0] ALUOpcode;
+    wire nextPCSrc;
 
 	// Program Counter logic
-    wire PCPlus4 = PC + 32'd4;
-    wire PCBranchTarget = PC + immExtended;
+    wire [31:0] PCPlus4 = PC + 32'd4;
+    wire [31:0] PCBranchTarget = PC + immExtended;
     // TODO: aggiungi supporto per istruzioni jump
-    wire nextPC = nextPCSrc ? PCBranchTarget : PCPlus4;
+    wire [31:0] nextPC = nextPCSrc ? PCBranchTarget : PCPlus4;
 	always @ (posedge clk, posedge reset) 
         if (reset)
             PC <= 32'h00001000; // default program counter 
@@ -36,7 +36,7 @@ module SingleCycleRISCV(
 
     InstructionMem imem (
         .address(PC[7:2]), // le istruzioni sono 4 byte e ne ho max 64
-        .instruction(instruction);
+        .instruction(instruction)
     );            
 
     ControlUnit controlUnit (
@@ -58,9 +58,10 @@ module SingleCycleRISCV(
     // Apprezziamo gli encoding dei registri nelle istruzioni riscv
     RegisterFile rf (
         .clk(clk),
-        .addressSourceReg1(instr[19:15]),
-        .addressSourceReg2(instr[24:20]),
-        .addressDestReg(instr[11:7]),
+        .reset(reset),
+        .addressSourceReg1(instruction[19:15]),
+        .addressSourceReg2(instruction[24:20]),
+        .addressDestReg(instruction[11:7]),
         .writeEnable(RFWriteEnable),
         .destRegData(destRegData),
         .sourceReg1Data(sourceReg1Data),
@@ -82,10 +83,10 @@ module SingleCycleRISCV(
         .resultIsZero(ALUResultIsZero)
     );
 
-    DataMem(
+    DataMem dmem (
         .clk(clk),
         .writeEnable(dataMemWriteEnable),
-        .address(ALUResult), // addressing mode riscv -> registro + offset
+        .address(ALUResult[7:2]), // addressing mode riscv -> registro + offset
         .writeData(sourceReg2Data),
         .readData(dataMemReadData)
     );

@@ -1,7 +1,11 @@
 module ControlUnit(
     input [6:0] op,     // instruction[6:0]
     input [2:0] funct3, // instruction[14:12]
+    // nota: questo è come si disabilita (e poi si riabilita) un warnign con
+    // verilator
+    /* verilator lint_off UNUSEDSIGNAL */
     input [6:0] funct7, // instruction[31:25]
+    /* verilator lint_on UNUSEDSIGNAL */
     input zero,
 
     output RFWriteEnable,
@@ -9,26 +13,26 @@ module ControlUnit(
     output ALUSrc2,
     output dataMemWriteEnable,
     output writebackSrc,
-    output [2:0] ALUOpcode,
+    output reg [2:0] ALUOpcode,
     output nextPCSrc
 );
 
     wire isBranch;
     wire [1:0] ALUOpClass;
-    wire [8:0] controlSignals;
+    reg [8:0] controlSignals;
 
     // main decoder
     always @(*)
         case(op)
             // RFWriteEnable_immSrc_ALUSrc2_dataMemWriteEnable_writebackSrc_isBranch_ALUOpClass
-            7'b0000011: controlSignals = 10'b1_00_1_0_1_0_00; // lw
-            7'b0100011: controlSignals = 10'b0_01_1_1_0_0_00; // sw
-            7'b0110011: controlSignals = 10'b1_xx_0_0_0_0_10; // R–type
-            7'b1100011: controlSignals = 10'b0_10_0_0_0_1_01; // beq
-            default: controlSignals = 10'bx_xx_x_x_xx_x_xx; // ???
+            7'b0000011: controlSignals = 9'b1_00_1_0_1_0_00; // lw
+            7'b0100011: controlSignals = 9'b0_01_1_1_0_0_00; // sw
+            7'b0110011: controlSignals = 9'b1_xx_0_0_0_0_10; // R–type
+            7'b1100011: controlSignals = 9'b0_10_0_0_0_1_01; // beq
+            default: controlSignals = 9'bx_xx_x_x_x_x_xx; // ???
         endcase
 
-    assign {RFWriteEnable, immSrc, ALUSrc2, dataMemWriteEnable, writebackSrc, isBranch, ALUOpcode} = controlSignals;
+    assign {RFWriteEnable, immSrc, ALUSrc2, dataMemWriteEnable, writebackSrc, isBranch, ALUOpClass} = controlSignals;
     assign nextPCSrc = isBranch & zero; // branch taken (beq == 0)
 
     // alu decoder: invece di fare un'unica megatabella possiamo spezzare la

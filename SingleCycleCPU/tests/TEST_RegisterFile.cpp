@@ -46,8 +46,38 @@ int main(int argc, char** argv) {
     rf.trace(&tfp, 99);         
     tfp.open("build/waveform.vcd");    
 
+    // Note verilator:
+    // - verilator seems to only support 2-level logic (0 and 1; no X or Z)
+    // - il comportamento a inizio simulazione non è chiarissimo
+    //   - ci sono dei CLI flag
+    //     - --x-initial <mode>  Assign initial Xs to this value
+    //     - --x-initial-edge    Enable initial X->0 and X->1 edge triggers
+    //   - ma per evitare stranezze è meglio essere espliciti nell'inserimento
+    //     dei fronti di salita/discesa: 
+    //     - verilator detects an edge by comparing the current value of a
+    //       signal with its value at the previous eval()
+    //     - se il segnale parte alto, non viene quindi rilevato nessun fronte
+    //       di salita
+
     // testo tutti i registri in ordine
-    for (int i = 1; i < 32; i++) {
+
+    // prima verifico il reset
+    rf.reset = 0;
+    tick(rf, tfp);
+    rf.reset = 1;
+    tick(rf, tfp);
+    rf.reset = 0;
+    for (int i = 0; i < 32; i++) {
+        // leggo i registri
+        rf.writeEnable = 0;         
+        rf.addressSourceReg1 = i;
+        rf.addressSourceReg2 = i;
+        tick(rf, tfp);
+
+        check(i, rf.sourceReg1Data, rf.sourceReg2Data, i);
+    }
+
+    for (int i = 0; i < 32; i++) {
         // prima scrivo il registro ...
         rf.writeEnable = 1;
         rf.addressDestReg = i;
