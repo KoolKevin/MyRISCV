@@ -60,14 +60,13 @@ module SingleCycleRISCV(
         .immExtended(immExtended)
     );
 
-    // TODO: ALU logic
     assign ALUOperand2 = ALUSrc2 ? immExtended : sourceReg2Data;
     ALU alu (
-        .ALUOpcode(ALUOpcode),
-        .ALUOp1(sourceReg1Data),
-        .ALUOp2(ALUOperand2),
-        .ALUResult(ALUResult),
-        .ALUResultIsZero(ALUResultIsZero)
+        .opcode(ALUOpcode),
+        .op1(sourceReg1Data),
+        .op2(ALUOperand2),
+        .result(ALUResult),
+        .resultIsZero(ALUResultIsZero)
     );
 
     DataMem(
