@@ -15,13 +15,13 @@ module SingleCycleRISCV(
     wire ALUResultIsZero;
     wire [31:0] dataMemReadData;
     // segnali della control unit
-    input nextPCSRC;
-    input [1:0] immSrc;
-    input RFWriteEnable;
-    input ALUSrc2;
-    input [2:0] ALUOpcode;
-    input dataMemWriteEnable;
-    input writebackSrc;
+    wire RFWriteEnable,
+    wire [1:0] immSrc,
+    wire ALUSrc2,
+    wire dataMemWriteEnable,
+    wire writebackSrc,
+    wire [2:0] ALUOpcode,
+    wire nextPCSrc
 
 	// Program Counter logic
     wire PCPlus4 = PC + 32'd4;
@@ -39,7 +39,20 @@ module SingleCycleRISCV(
         .instruction(instruction);
     );            
 
-    // TODO: Control Unit
+    ControlUnit controlUnit (
+        .op(instruction[6:0]),
+        .funct3(instruction[14:12]),
+        .funct7(instruction[31:25]),
+        .zero(ALUResultIsZero),
+
+        .RFWriteEnable(RFWriteEnable),
+        .immSrc(immSrc),
+        .ALUSrc2(ALUSrc2),
+        .dataMemWriteEnable(dataMemWriteEnable),
+        .writebackSrc(writebackSrc),
+        .ALUOpcode(ALUOpcode),
+        .nextPCSrc(nextPCSrc)
+    );
 
     assign destRegData = writebackSrc ? dataMemReadData : ALUResult;
     // Apprezziamo gli encoding dei registri nelle istruzioni riscv
