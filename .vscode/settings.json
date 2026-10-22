@@ -1,0 +1,10 @@
+
+// settings.json holds VS Code settings for this workspace.
+// 
+// In this case it only contains lldb.library, which is optional (the bundled 
+// lldb works). Skip it unless you really want your custom lldb build (rischioso
+// a causa di version mismatch tra libreria e estensione di vscode).
+
+// {
+//   "lldb.library": "/home/kevin/llvm-project/build/lib/liblldb.so"
+// }

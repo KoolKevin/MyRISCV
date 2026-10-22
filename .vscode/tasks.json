@@ -1,0 +1,23 @@
+// tasks.json defines named commands (like “run make build”). 
+// 
+// launch.json references one through preLaunchTask so your code is rebuilt 
+// before each debug session.
+
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build SingleCycleCPU",
+      "type": "shell",
+      "command": "make build",
+      "options": { "cwd": "${workspaceFolder}/SingleCycleCPU" },
+      "group": "build"
+    },
+    // {
+    //   "label": "build MultiCycleCPU",
+    //   "type": "shell",
+    //   "command": "make build",
+    //   "options": { "cwd": "${workspaceFolder}/MultiCycleCPU" }
+    // }
+  ]
+}

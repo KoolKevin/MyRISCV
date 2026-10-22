@@ -1,0 +1,31 @@
+// launch.json tells the debugger what to run: which binary, which arguments, 
+// which working directory, which debugger type. 
+// 
+// This is the only config file you can’t do without if you want to debug inside
+// vscode. Without it, F5 has nothing to launch.
+// 
+// NB: this needs to be inside the root folder of the project
+
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug SingleCycleCPU",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/SingleCycleCPU/build/sim",
+      "args": [],
+      "cwd": "${workspaceFolder}/SingleCycleCPU",
+      "preLaunchTask": "build SingleCycleCPU"
+    },
+    // {
+    //   "name": "Debug MultiCycleCPU",
+    //   "type": "lldb",
+    //   "request": "launch",
+    //   "program": "${workspaceFolder}/MultiCycleCPU/build/sim",
+    //   "args": [],
+    //   "cwd": "${workspaceFolder}/MultiCycleCPU",
+    //   "preLaunchTask": "build MultiCycleCPU"
+    // }
+  ]
+}
