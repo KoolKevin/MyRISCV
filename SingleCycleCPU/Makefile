@@ -12,20 +12,26 @@ SRCS = src/InstructionMem.v \
 TESTBENCH = tests/TEST_SingleCycleRISCV.cpp
 
 
-# --cc 			-> Generate C++ code
-# --exe 		-> Generate a runnable executable linked with the testbench
-# --build 		-> Automatically builds the verilated files
-# -Wall 		-> Enable all warning messages
-# -Wno-fatal 	-> Non blocca la compilazione in caso di warning
-# --trace 		-> Enable waveform tracing (.vcd generation)
-# --Mdir build  -> Specify the target build output directory
+# --cc 				-> Generate C++ code
+# --exe 			-> Generate a runnable executable linked with the testbench
+# --build 			-> Automatically builds the verilated files
+# --public-flat-rw 	-> Rende visibili i segnali interni tramite rootp
+# -Wall 			-> Enable all warning messages
+# -Wno-fatal 		-> Non blocca la compilazione in caso di warning
+# --trace 			-> Enable waveform tracing (.vcd generation)
+# --Mdir build  	-> Specify the target build output directory
+# ... vari flag per produrre un binario debuggabile (impossibile trovare docs)
 VERILATOR_FLAGS = --cc \
                   --exe \
                   --build \
+				  --public-flat-rw \
 				  -Wall \
 				  -Wno-fatal \
                   --trace \
                   --Mdir build \
+                  -CFLAGS "-g -O0" \
+                  -LDFLAGS "-g" \
+				  -MAKEFLAGS "OPT_FAST=-O0 OPT_SLOW=-O0 OPT_GLOBAL=-O0" \
 				  -o sim
 
 .PHONY: build run clean
@@ -44,3 +50,6 @@ wave: run
 
 lint:
 	verilator --lint-only -Wall $(SRCS) --top-module $(TOP)
+
+debug:
+	raddbg build/sim
