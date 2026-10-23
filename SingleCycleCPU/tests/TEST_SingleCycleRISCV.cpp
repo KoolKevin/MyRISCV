@@ -200,19 +200,22 @@ void printDecodedInstruction(DecodedInstruction decoded) {
     }
 }
 
+#define NUM_REGS 32
+#define NUM_DMEM_WORDS 64
+
 struct CpuState {
     uint32_t pc;
-    uint32_t regs[32];
-    uint32_t mem[64];
+    uint32_t regs[NUM_REGS];
+    uint32_t mem[NUM_DMEM_WORDS];
 };
 
 CpuState snapshot(VSingleCycleRISCV& riscv) {
     CpuState s;
     s.pc = riscv.rootp->SingleCycleRISCV__DOT__PC;
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < NUM_REGS; i++)
         s.regs[i] = riscv.rootp->SingleCycleRISCV__DOT__rf__DOT__registers[i];
 
-    for (int i = 0; i < 64; i++)
+    for (int i = 0; i < NUM_DMEM_WORDS; i++)
         s.mem[i] = riscv.rootp->SingleCycleRISCV__DOT__dmem__DOT__memory[i];
 
     return s;
@@ -248,7 +251,6 @@ int main(int argc, char** argv) {
     tick(riscv, tfp);
     riscv.reset = 0;
 
-    // eseguiamo 40 istruzioni
     for (int i = 0; i < 40; i++) {
         // printf("\t%x\n", riscv.rootp->SingleCycleRISCV__DOT__instruction);
         DecodedInstruction decoded = 
@@ -261,6 +263,8 @@ int main(int argc, char** argv) {
         printDiff(before, after);
     }
     tfp.dump(sim_time); 
+
+    // If successful, it should write the value 25 to address 100 (word 25)
 
     // cleanup
     tfp.close();

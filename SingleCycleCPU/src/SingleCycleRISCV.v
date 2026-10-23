@@ -7,7 +7,7 @@ module SingleCycleRISCV(
     reg [31:0] PC;
     wire [31:0] instruction;
     wire [31:0] immExtended;
-    wire [31:0] destRegData;
+    reg [31:0] destRegData;
     wire [31:0] sourceReg1Data;
     wire [31:0] sourceReg2Data;
     wire [31:0] ALUOperand2;
@@ -19,7 +19,7 @@ module SingleCycleRISCV(
     wire [1:0] immSrc;
     wire ALUSrc2;
     wire dataMemWriteEnable;
-    wire writebackSrc;
+    wire [1:0] writebackSrc;
     wire [2:0] ALUOpcode;
     wire nextPCSrc;
 
@@ -54,7 +54,15 @@ module SingleCycleRISCV(
         .nextPCSrc(nextPCSrc)
     );
 
-    assign destRegData = writebackSrc ? dataMemReadData : ALUResult;
+    // mux a 3 vie
+    always @(*)
+        case(writebackSrc)
+            2'b00: destRegData = ALUResult;
+            2'b01: destRegData = dataMemReadData;
+            2'b10: destRegData = PCPlus4;
+            default: destRegData = 32'bx;
+        endcase
+
     // Apprezziamo gli encoding dei registri nelle istruzioni riscv
     RegisterFile rf (
         .clk(clk),
@@ -86,6 +94,8 @@ module SingleCycleRISCV(
     DataMem dmem (
         .clk(clk),
         .writeEnable(dataMemWriteEnable),
+        // TODO: per adesso lascio anche la dmem word-addressable (supporto 
+        // solo lw, e sw)
         .address(ALUResult[7:2]), // addressing mode riscv -> registro + offset
         .writeData(sourceReg2Data),
         .readData(dataMemReadData)
