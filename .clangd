@@ -2,3 +2,4 @@ CompileFlags:
   Add: 
     - "-I/usr/share/verilator/include"
     - "-I/home/kevin/GitRepos/MyRISCV/SingleCycleCPU/build"
+    - "-I/home/kevin/GitRepos/MyRISCV/PipelinedCPU/build"
