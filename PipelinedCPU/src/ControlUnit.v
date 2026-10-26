@@ -6,18 +6,16 @@ module ControlUnit(
     /* verilator lint_off UNUSEDSIGNAL */
     input [6:0] funct7, // instruction[31:25]
     /* verilator lint_on UNUSEDSIGNAL */
-    input zero,
-
     output RFWriteEnable,
     output [1:0] immSrc,
     output ALUSrc2,
     output dataMemWriteEnable,
     output [1:0] writebackSrc,
     output reg [2:0] ALUOpcode,
-    output nextPCSrc
+    output isBranch,
+    output isJump
 );
 
-    wire isBranch, isJump;
     wire [1:0] ALUOpClass;
     reg [10:0] controlSignals;
 
@@ -40,8 +38,6 @@ module ControlUnit(
         endcase
 
     assign {RFWriteEnable, immSrc, ALUSrc2, dataMemWriteEnable, writebackSrc, isBranch, ALUOpClass, isJump} = controlSignals;
-    // pc = pc + imm if: branch taken (beq == 0), or when doing a jump
-    assign nextPCSrc = (isBranch & zero) | isJump; 
 
     // alu decoder: invece di fare un'unica megatabella possiamo spezzare la
     // control unit in due tabelle. ALUOpClass, prodotto dal main decoder, fa
