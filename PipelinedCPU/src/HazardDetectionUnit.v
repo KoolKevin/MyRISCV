@@ -17,7 +17,10 @@ module HazardDetectionUnit(
     input [4:0] addressSourceReg2_decode,
     output stallFetch,
     output stallDecode,
-    output flushExecute
+    output flushExecute,
+    // per stalli relativi a dipendenze di controllo
+    input branchIsTaken,
+    output flushDecode
 );
 
     // Forwarding logic
@@ -52,6 +55,9 @@ module HazardDetectionUnit(
 
     // stalling logic
     //
+    // a stall is needed for load RAW dependencies and for taken branches, since
+    // by default the pipeline statically predicts that they are not taken.
+    //
     // In order for the Hazard Unit to stall the pipeline, the following 
     // conditions must be met:
     // 1. A load word is in the Execute stage (writebackSource_execute[0] == 1) 
@@ -64,7 +70,8 @@ module HazardDetectionUnit(
     );
     assign stallFetch = lwStall;
     assign stallDecode = lwStall;
-    assign flushExecute = lwStall;
+    assign flushExecute = lwStall | branchIsTaken;
+    assign flushDecode = branchIsTaken;
 
     // nota: The lwStall logic described here could cause the processor to stall
     // unnecessarily when the destination of the load is x0 or when a false
@@ -73,7 +80,5 @@ module HazardDetectionUnit(
     // bits in their immediate fields and the destination register. However,
     // these cases are rare (and poor coding practice, in the case of x0 being
     // the load destination) and they cause only a small performance loss.
-
-
 
 endmodule

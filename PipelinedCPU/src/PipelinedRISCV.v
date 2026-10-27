@@ -37,7 +37,7 @@ module PipelinedRISCV(
     // segnali della hazard detection unit
     wire [1:0] forwardALUOperand1, forwardALUOperand2;
     wire stallFetch, stallDecode;
-    wire flushExecute;
+    wire flushDecode, flushExecute;
 
 
     // ------------ IF stage ------------ //
@@ -66,9 +66,11 @@ module PipelinedRISCV(
             PC_decode <= PC_fetch;
             PCPlus4_decode <= PCPlus4_fetch;
             instruction_decode <= instruction_fetch;
+        end else if (flushDecode) begin
+            PC_decode <= 32'd0;
+            PCPlus4_decode <= 32'd0;
+            instruction_decode <= 32'd0;
         end
-        // else 
-        //    we're stalling and we need to keep decoding the same instruction 
     end
 
     // ------------ ID stage ------------ //
@@ -190,6 +192,8 @@ module PipelinedRISCV(
     // pc = pc + imm if: branch taken (beq == 0), or when doing a jump
     // (questo adesso lo devo mettere fuori dalla control unit dato che isBranch
     // e isJump devono essere campionati dai registri della pipeline)
+    //
+    // NB: when this is 1 it means that a branch is taken
     assign nextPCSrc_execute = (isBranch_execute & ALUResultIsZero) | isJump_execute; 
 
     // EX/MEM pipeline register
@@ -256,7 +260,10 @@ module PipelinedRISCV(
         .addressSourceReg2_decode(addressSourceReg2_decode),
         .stallFetch(stallFetch),
         .stallDecode(stallDecode),
-        .flushExecute(flushExecute)
+        .flushExecute(flushExecute),
+
+        .branchIsTaken(nextPCSrc_execute),
+        .flushDecode(flushDecode)
     );
 
 endmodule
