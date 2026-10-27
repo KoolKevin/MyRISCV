@@ -3,8 +3,8 @@
 #include <verilated_vcd_c.h> // libreria per la generazione dei VCD (Value Change Dump)
 
 // header file generati dai miei moduli contenenti le corrispondenticlassi c++
-#include "VSingleCycleRISCV.h"
-#include "VSingleCycleRISCV___024root.h"   // needed to see the members of rootp
+#include "VPipelinedRISCV.h"
+#include "VPipelinedRISCV___024root.h"   // needed to see the members of rootp
 
 #include <cstdio>
 #include <stdint.h>
@@ -14,7 +14,7 @@ int n_checks = 0;
 int n_fails  = 0;
 
 // Un ciclo di clock completo: clk=0 -> eval -> clk=1 -> eval
-void tick(VSingleCycleRISCV& riscv, VerilatedVcdC& tfp) {
+void tick(VPipelinedRISCV& riscv, VerilatedVcdC& tfp) {
     // fronte di discesa
     riscv.clk = 0;
     riscv.eval();
@@ -59,6 +59,11 @@ struct DecodedInstruction {
             uint8_t rs1;
             uint8_t rs2;
         } BType;
+
+        struct {
+            int32_t imm; // 21 bit (ricorda l'ultimo zero implicito)
+            uint8_t rd;
+        } JType;
     } type;
 };
 
@@ -103,7 +108,10 @@ DecodedInstruction decodeInstruction(uint32_t encodedInstruction) {
         break;
     }
     // I-Type 
-    // case ?: // alu-ops con immediato
+    case 19: // alu-ops con immediato
+    // FIXME: codificare così anche le aluops con immediato non va bene dato che
+    // le istruzioni di shift considerano anche un funct7 (ricorda che hanno 
+    // bisogno di solamente 5 bit per l'immediato)
     case 3: { // loads
         uint32_t rawImmBits = sliceBitsFromWord(encodedInstruction, 31, 20);
         res.type.IType.imm = (int16_t)signExtend(rawImmBits, 12);
@@ -134,12 +142,27 @@ DecodedInstruction decodeInstruction(uint32_t encodedInstruction) {
         uint16_t immBit5_2 = (uint16_t)sliceBitsFromWord(encodedInstruction, 11, 8);
         // bit1 = zero implicito
         uint32_t rawImmBits =
-            (int16_t)(((immBit13 << 11) | (immBit12 << 10) | (immBit11_6 << 4) | (immBit5_2)) << 1);
+            (uint16_t)(((immBit13 << 11) | (immBit12 << 10) | (immBit11_6 << 4) | (immBit5_2)) << 1);
         res.type.BType.imm = (int16_t)signExtend(rawImmBits, 13);
 
         res.type.BType.funct3 = (uint8_t)sliceBitsFromWord(encodedInstruction, 14, 12);
         res.type.BType.rs1 = (uint8_t)sliceBitsFromWord(encodedInstruction, 19, 15);
         res.type.BType.rs2 = (uint8_t)sliceBitsFromWord(encodedInstruction, 24, 20);
+
+        break;
+    }
+    // J-Type
+    case 111: { 
+        uint32_t immBit21 = (uint32_t)sliceBitsFromWord(encodedInstruction, 31, 31);
+        uint32_t immBit20_13 = (uint32_t)sliceBitsFromWord(encodedInstruction, 19, 12);
+        uint32_t immBit12 = (uint32_t)sliceBitsFromWord(encodedInstruction, 20, 20);
+        uint32_t immBit11_2 = (uint32_t)sliceBitsFromWord(encodedInstruction, 30, 21);
+        // bit1 = zero implicito
+        uint32_t rawImmBits =
+            (int32_t)(((immBit21 << 19) | (immBit20_13 << 11) | (immBit12 << 10) | (immBit11_2)) << 1);
+        res.type.JType.imm = (int32_t)signExtend(rawImmBits, 13);
+
+        res.type.JType.rd = (uint8_t)sliceBitsFromWord(encodedInstruction, 11, 7);
 
         break;
     }
@@ -155,21 +178,29 @@ DecodedInstruction decodeInstruction(uint32_t encodedInstruction) {
 void printDecodedInstruction(DecodedInstruction decoded) {
     // FIXME: per adesso faccio un pretty print di solamente le istruzioni del
     // mio programma di test in maniera hardcoded.
-    //
-    // L7:  lw   x6, -4(x9)
-    //      sw   x6, 8(x9)
-    //      or   x4, x5, x6
-    //      beq  x4, x4, L7
-    //
-    // Per supportare le altre istruzioni dovrei aggiungere una tabella che 
-    // indicizzo con opcode, funct7 e funct3
 
     switch (decoded.opcode) {
     // R-Type
     case 51: { 
-        if (decoded.type.RType.funct7 == 0 && decoded.type.RType.funct3 == 6) {
-            printf("or\tx%d, x%d, x%d\n", decoded.type.RType.rd, decoded.type.RType.rs1, decoded.type.RType.rs2);
+        const char* mnemonic;
+        if (decoded.type.RType.funct7 == 0 && decoded.type.RType.funct3 == 0) {
+            mnemonic = "add";
         }
+        else if (decoded.type.RType.funct7 == 32 && decoded.type.RType.funct3 == 0) {
+            mnemonic = "sub";
+        }
+        else if (decoded.type.RType.funct7 == 0 && decoded.type.RType.funct3 == 2) {
+            mnemonic = "slt";
+        }
+        else if (decoded.type.RType.funct7 == 0 && decoded.type.RType.funct3 == 6) {
+            mnemonic = "or";
+        }
+        else if (decoded.type.RType.funct7 == 0 && decoded.type.RType.funct3 == 7) {
+            mnemonic = "and";
+        }
+
+        printf("%s\tx%d, x%d, x%d\n", mnemonic, decoded.type.RType.rd, decoded.type.RType.rs1, decoded.type.RType.rs2);
+
         break;
     }
     // I-Type (loads)
@@ -177,6 +208,26 @@ void printDecodedInstruction(DecodedInstruction decoded) {
         if (decoded.type.IType.funct3 == 2) {
             printf("lw\tx%d, %d(x%d)\n", decoded.type.IType.rd, decoded.type.IType.imm, decoded.type.IType.rs1);
         }
+        break;
+    }
+    // I-Type (alu-ops con immediato)
+    case 19: { 
+        const char* mnemonic;
+        if (decoded.type.IType.funct3 == 0) {
+            mnemonic = "addi";
+        }
+        if (decoded.type.IType.funct3 == 2) {
+            mnemonic = "slti";
+        }
+        if (decoded.type.IType.funct3 == 6) {
+            mnemonic = "ori";
+        }
+        if (decoded.type.IType.funct3 == 7) {
+            mnemonic = "andi";
+        }
+
+        printf("%s\tx%d, x%d, %d\n", mnemonic, decoded.type.IType.rd, decoded.type.IType.rs1, decoded.type.IType.imm);
+
         break;
     }
     // S-Type
@@ -191,6 +242,12 @@ void printDecodedInstruction(DecodedInstruction decoded) {
         if (decoded.type.BType.funct3 == 0) {
             printf("beq\tx%d, x%d, %d\n", decoded.type.BType.rs1, decoded.type.BType.rs2, decoded.type.BType.imm);
         }
+        break;
+    }
+    // J-Type
+    case 111: { 
+        printf("jal\tx%d, %d\n", decoded.type.JType.rd, decoded.type.JType.imm);
+
         break;
     }
     // unrecognized
@@ -209,14 +266,14 @@ struct CpuState {
     uint32_t mem[NUM_DMEM_WORDS];
 };
 
-CpuState snapshot(VSingleCycleRISCV& riscv) {
+CpuState snapshot(VPipelinedRISCV& riscv) {
     CpuState s;
-    s.pc = riscv.rootp->SingleCycleRISCV__DOT__PC;
+    s.pc = riscv.rootp->PipelinedRISCV__DOT__PC_fetch;
     for (int i = 0; i < NUM_REGS; i++)
-        s.regs[i] = riscv.rootp->SingleCycleRISCV__DOT__rf__DOT__registers[i];
+        s.regs[i] = riscv.rootp->PipelinedRISCV__DOT__rf__DOT__registers[i];
 
     for (int i = 0; i < NUM_DMEM_WORDS; i++)
-        s.mem[i] = riscv.rootp->SingleCycleRISCV__DOT__dmem__DOT__memory[i];
+        s.mem[i] = riscv.rootp->PipelinedRISCV__DOT__dmem__DOT__memory[i];
 
     return s;
 }
@@ -238,7 +295,7 @@ int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
     Verilated::traceEverOn(true);
 
-    VSingleCycleRISCV riscv;
+    VPipelinedRISCV riscv;
 
     VerilatedVcdC tfp; 
     riscv.trace(&tfp, 99);         
@@ -252,9 +309,9 @@ int main(int argc, char** argv) {
     riscv.reset = 0;
 
     for (int i = 0; i < 40; i++) {
-        // printf("\t%x\n", riscv.rootp->SingleCycleRISCV__DOT__instruction);
+        // printf("\t%x\n", riscv.rootp->PipelinedRISCV__DOT__instruction);
         DecodedInstruction decoded = 
-            decodeInstruction(riscv.rootp->SingleCycleRISCV__DOT__instruction);
+            decodeInstruction(riscv.rootp->PipelinedRISCV__DOT__instruction_fetch);
         printDecodedInstruction(decoded);
 
         CpuState before = snapshot(riscv);

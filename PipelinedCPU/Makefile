@@ -6,6 +6,7 @@ SRCS = src/InstructionMem.v \
 	   src/ALU.v \
 	   src/ControlUnit.v \
 	   src/ImmExtensionUnit.v \
+	   src/HazardDetectionUnit.v \
 	   src/PipelinedRISCV.v \
 
 # TESTBENCH = tests/TEST_RegisterFile.cpp
