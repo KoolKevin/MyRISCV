@@ -12,12 +12,16 @@ module PipelinedRISCV(
     reg [31:0] immExtended_decode, immExtended_execute;
     reg [4:0] addressDestReg_decode, addressDestReg_execute, addressDestReg_memory, addressDestReg_writeback;
     reg [31:0] writebackData;
+    reg [4:0] addressSourceReg1_decode, addressSourceReg1_execute;
+    reg [4:0] addressSourceReg2_decode, addressSourceReg2_execute;
     reg [31:0] sourceReg1Data_decode, sourceReg1Data_execute;
-    reg [31:0] sourceReg2Data_decode, sourceReg2Data_execute, sourceReg2Data_memory;
-    wire [31:0] ALUOperand2;
+    reg [31:0] sourceReg2Data_decode, sourceReg2Data_execute;
+    reg [31:0] forwardingData2;
+    reg [31:0] ALUOperand1, ALUOperand2;
     reg [31:0] ALUResult_execute, ALUResult_memory, ALUResult_writeback;
     wire ALUResultIsZero;
     reg [31:0] dataMemReadData_memory, dataMemReadData_writeback;
+    reg [31:0] dataMemWriteData_execute, dataMemWriteData_memory;
 
     // segnali della control unit
     reg RFWriteEnable_decode, RFWriteEnable_execute, RFWriteEnable_memory, RFWriteEnable_writeback;
@@ -29,6 +33,11 @@ module PipelinedRISCV(
     reg ALUSrc2_decode, ALUSrc2_execute;
     wire [1:0] immSrc_decode;
     wire nextPCSrc_execute;
+
+
+    // segnali della hazard detection unit
+    wire [1:0] forwardALUOperand1, forwardALUOperand2;
+
 
     // ------------ IF stage ------------ //
 
@@ -57,6 +66,8 @@ module PipelinedRISCV(
 
     // ------------ ID stage ------------ //
 
+    assign addressSourceReg1_decode = instruction_decode[19:15];
+    assign addressSourceReg2_decode = instruction_decode[24:20];
     assign addressDestReg_decode = instruction_decode[11:7];
     // Apprezziamo gli encoding dei registri nelle istruzioni riscv
     RegisterFile rf (
@@ -101,6 +112,8 @@ module PipelinedRISCV(
         PCPlus4_execute <= PCPlus4_decode;
         immExtended_execute <= immExtended_decode;
         addressDestReg_execute <= addressDestReg_decode;
+        addressSourceReg1_execute <= addressSourceReg1_decode;
+        addressSourceReg2_execute <= addressSourceReg2_decode;
 
         // segnali di controllo
         RFWriteEnable_execute <= RFWriteEnable_decode;
@@ -114,10 +127,31 @@ module PipelinedRISCV(
 
     // ------------ EX stage ------------ //
 
-    assign ALUOperand2 = ALUSrc2_execute ? immExtended_execute : sourceReg2Data_execute;
+    // questo è puramente un alias per non fare confusione coi nomi
+    assign dataMemWriteData_execute = forwardingData2;
+
+    // due mux a 3 vie che implementano le connessioni di forwarding agli
+    // operandi della ALU
+    always @(*) begin
+        case(forwardALUOperand1)
+            2'b00: ALUOperand1 = sourceReg1Data_execute;
+            2'b01: ALUOperand1 = writebackData;
+            2'b10: ALUOperand1 = ALUResult_memory;
+            default: ALUOperand1 = 32'bx;
+        endcase
+
+        case(forwardALUOperand2)
+            2'b00: forwardingData2 = sourceReg2Data_execute;
+            2'b01: forwardingData2 = writebackData;
+            2'b10: forwardingData2 = ALUResult_memory;
+            default: forwardingData2 = 32'bx;
+        endcase
+    end
+
+    assign ALUOperand2 = ALUSrc2_execute ? immExtended_execute : forwardingData2;
     ALU alu (
         .opcode(ALUOpcode_execute),
-        .op1(sourceReg1Data_execute),
+        .op1(ALUOperand1),
         .op2(ALUOperand2),
         .result(ALUResult_execute),
         .resultIsZero(ALUResultIsZero)
@@ -131,7 +165,7 @@ module PipelinedRISCV(
     // EX/MEM pipeline register
     always @ (posedge clk) begin
         ALUResult_memory <= ALUResult_execute;
-        sourceReg2Data_memory <= sourceReg2Data_execute;
+        dataMemWriteData_memory <= dataMemWriteData_execute;
         addressDestReg_memory <= addressDestReg_execute;
         PCPlus4_memory <= PCPlus4_execute;
 
@@ -149,7 +183,7 @@ module PipelinedRISCV(
         // TODO: per adesso lascio anche la dmem word-addressable (supporto 
         // solo lw, e sw)
         .address(ALUResult_memory[7:2]), // addressing mode riscv -> registro + offset
-        .writeData(sourceReg2Data_memory),
+        .writeData(dataMemWriteData_memory),
         .readData(dataMemReadData_memory)
     );
 
@@ -176,5 +210,15 @@ module PipelinedRISCV(
             default: writebackData = 32'bx;
         endcase
 
+    HazardDetectionUnit hazardDetectionUnit (
+        .addressSourceReg1_execute(addressSourceReg1_execute),
+        .addressSourceReg2_execute(addressSourceReg2_execute),
+        .addressDestReg_memory(addressDestReg_memory),
+        .addressDestReg_writeback(addressDestReg_writeback),
+        .RFWriteEnable_memory(RFWriteEnable_memory),
+        .RFWriteEnable_writeback(RFWriteEnable_writeback),
+        .forwardALUOperand1(forwardALUOperand1),
+        .forwardALUOperand2(forwardALUOperand2)
+    );
 
 endmodule

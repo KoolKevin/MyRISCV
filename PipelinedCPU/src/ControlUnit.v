@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module ControlUnit(
     input [6:0] op,     // instruction[6:0]
     input [2:0] funct3, // instruction[14:12]
