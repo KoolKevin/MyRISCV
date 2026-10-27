@@ -34,9 +34,10 @@ module PipelinedRISCV(
     wire [1:0] immSrc_decode;
     wire nextPCSrc_execute;
 
-
     // segnali della hazard detection unit
     wire [1:0] forwardALUOperand1, forwardALUOperand2;
+    wire stallFetch, stallDecode;
+    wire flushExecute;
 
 
     // ------------ IF stage ------------ //
@@ -49,8 +50,10 @@ module PipelinedRISCV(
 	always @ (posedge clk, posedge reset) 
         if (reset)
             PC_fetch <= 32'h00001000; // default program counter 
-        else
+        else if (!stallFetch)
             PC_fetch <= nextPC_fetch;
+        // else 
+        //    we're stalling and we need to keep fetching the same instruction 
 
     InstructionMem imem (
         .address(PC_fetch[7:2]), // le istruzioni sono 4 byte e ne ho max 64
@@ -59,9 +62,13 @@ module PipelinedRISCV(
 
     // IF/ID pipeline register 
     always @ (posedge clk) begin
-        PC_decode <= PC_fetch;
-        PCPlus4_decode <= PCPlus4_fetch;
-        instruction_decode <= instruction_fetch;
+        if (!stallDecode) begin
+            PC_decode <= PC_fetch;
+            PCPlus4_decode <= PCPlus4_fetch;
+            instruction_decode <= instruction_fetch;
+        end
+        // else 
+        //    we're stalling and we need to keep decoding the same instruction 
     end
 
     // ------------ ID stage ------------ //
@@ -106,23 +113,46 @@ module PipelinedRISCV(
 
     // ID/EX pipeline register
     always @ (posedge clk) begin
-        sourceReg1Data_execute <= sourceReg1Data_decode;
-        sourceReg2Data_execute <= sourceReg2Data_decode;
-        PC_execute <= PC_decode; 
-        PCPlus4_execute <= PCPlus4_decode;
-        immExtended_execute <= immExtended_decode;
-        addressDestReg_execute <= addressDestReg_decode;
-        addressSourceReg1_execute <= addressSourceReg1_decode;
-        addressSourceReg2_execute <= addressSourceReg2_decode;
-
-        // segnali di controllo
-        RFWriteEnable_execute <= RFWriteEnable_decode;
-        writebackSrc_execute <= writebackSrc_decode;
-        dataMemWriteEnable_execute <= dataMemWriteEnable_decode;
-        isBranch_execute <= isBranch_decode;
-        isJump_execute <= isJump_decode; 
-        ALUOpcode_execute <= ALUOpcode_decode;
-        ALUSrc2_execute <= ALUSrc2_decode;
+        if (flushExecute) begin
+            // NB: qua l'importante è disabilitare tutti i segnali di controllo
+            // che agiscono come un write-enable (e.g. RFWriteEnable), in questo
+            // modo lo stato del processore non viene modificato durante i cicli
+            // di stallo. Imposto comunque tutti i segnali a 0 in modo da poter
+            // osservare più facilmente le bolle nella pipeline durante debug
+            sourceReg1Data_execute <= 32'd0;
+            sourceReg2Data_execute <= 32'd0;
+            PC_execute <= 32'd0; 
+            PCPlus4_execute <= 32'd0;
+            immExtended_execute <= 32'd0;
+            addressDestReg_execute <= 5'd0;
+            addressSourceReg1_execute <= 5'd0;
+            addressSourceReg2_execute <= 5'd0;
+            // segnali di controllo
+            RFWriteEnable_execute <= 1'd0;
+            writebackSrc_execute <= 2'd0;
+            dataMemWriteEnable_execute <= 1'd0;
+            isBranch_execute <= 1'd0;
+            isJump_execute <= 1'd0; 
+            ALUOpcode_execute <= 3'd0;
+            ALUSrc2_execute <= 1'd0;
+        end else begin 
+            sourceReg1Data_execute <= sourceReg1Data_decode;
+            sourceReg2Data_execute <= sourceReg2Data_decode;
+            PC_execute <= PC_decode; 
+            PCPlus4_execute <= PCPlus4_decode;
+            immExtended_execute <= immExtended_decode;
+            addressDestReg_execute <= addressDestReg_decode;
+            addressSourceReg1_execute <= addressSourceReg1_decode;
+            addressSourceReg2_execute <= addressSourceReg2_decode;
+            // segnali di controllo
+            RFWriteEnable_execute <= RFWriteEnable_decode;
+            writebackSrc_execute <= writebackSrc_decode;
+            dataMemWriteEnable_execute <= dataMemWriteEnable_decode;
+            isBranch_execute <= isBranch_decode;
+            isJump_execute <= isJump_decode; 
+            ALUOpcode_execute <= ALUOpcode_decode;
+            ALUSrc2_execute <= ALUSrc2_decode;
+        end
     end
 
     // ------------ EX stage ------------ //
@@ -218,7 +248,15 @@ module PipelinedRISCV(
         .RFWriteEnable_memory(RFWriteEnable_memory),
         .RFWriteEnable_writeback(RFWriteEnable_writeback),
         .forwardALUOperand1(forwardALUOperand1),
-        .forwardALUOperand2(forwardALUOperand2)
+        .forwardALUOperand2(forwardALUOperand2),
+
+        .loadInExecute(writebackSrc_execute[0]),
+        .addressDestReg_execute(addressDestReg_execute),
+        .addressSourceReg1_decode(addressSourceReg1_decode),
+        .addressSourceReg2_decode(addressSourceReg2_decode),
+        .stallFetch(stallFetch),
+        .stallDecode(stallDecode),
+        .flushExecute(flushExecute)
     );
 
 endmodule
