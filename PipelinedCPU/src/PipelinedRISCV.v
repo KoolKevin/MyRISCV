@@ -61,16 +61,16 @@ module PipelinedRISCV(
     );            
 
     // IF/ID pipeline register 
-    always @ (posedge clk) begin
-        if (!stallDecode) begin
-            PC_decode <= PC_fetch;
-            PCPlus4_decode <= PCPlus4_fetch;
-            instruction_decode <= instruction_fetch;
-        end else if (flushDecode) begin
+    always @ (posedge clk, posedge reset) begin
+        if (reset | flushDecode) begin
             PC_decode <= 32'd0;
             PCPlus4_decode <= 32'd0;
             instruction_decode <= 32'd0;
-        end
+        end else if (!stallDecode) begin
+            PC_decode <= PC_fetch;
+            PCPlus4_decode <= PCPlus4_fetch;
+            instruction_decode <= instruction_fetch;
+        end 
     end
 
     // ------------ ID stage ------------ //
@@ -114,8 +114,8 @@ module PipelinedRISCV(
     );
 
     // ID/EX pipeline register
-    always @ (posedge clk) begin
-        if (flushExecute) begin
+    always @ (posedge clk, posedge reset) begin
+        if (reset | flushExecute) begin
             // NB: qua l'importante è disabilitare tutti i segnali di controllo
             // che agiscono come un write-enable (e.g. RFWriteEnable), in questo
             // modo lo stato del processore non viene modificato durante i cicli
@@ -197,16 +197,28 @@ module PipelinedRISCV(
     assign nextPCSrc_execute = (isBranch_execute & ALUResultIsZero) | isJump_execute; 
 
     // EX/MEM pipeline register
-    always @ (posedge clk) begin
-        ALUResult_memory <= ALUResult_execute;
-        dataMemWriteData_memory <= dataMemWriteData_execute;
-        addressDestReg_memory <= addressDestReg_execute;
-        PCPlus4_memory <= PCPlus4_execute;
+    always @ (posedge clk, posedge reset) begin
+        if (reset) begin
+            ALUResult_memory <= 32'd0;
+            dataMemWriteData_memory <= 32'd0;
+            addressDestReg_memory <= 5'd0;
+            PCPlus4_memory <= 32'd0;
 
-        // segnali di controllo
-        RFWriteEnable_memory <= RFWriteEnable_execute;
-        writebackSrc_memory <= writebackSrc_execute;
-        dataMemWriteEnable_memory <= dataMemWriteEnable_execute;
+            // segnali di controllo
+            RFWriteEnable_memory <= 1'd0;
+            writebackSrc_memory <= 2'd0;
+            dataMemWriteEnable_memory <= 1'd0;
+        end else begin
+            ALUResult_memory <= ALUResult_execute;
+            dataMemWriteData_memory <= dataMemWriteData_execute;
+            addressDestReg_memory <= addressDestReg_execute;
+            PCPlus4_memory <= PCPlus4_execute;
+
+            // segnali di controllo
+            RFWriteEnable_memory <= RFWriteEnable_execute;
+            writebackSrc_memory <= writebackSrc_execute;
+            dataMemWriteEnable_memory <= dataMemWriteEnable_execute;
+        end
     end
 
     // ------------ MEM stage ------------ //
@@ -222,15 +234,26 @@ module PipelinedRISCV(
     );
 
     // MEM/WB pipeline register
-    always @ (posedge clk) begin
-        ALUResult_writeback <= ALUResult_memory;
-        dataMemReadData_writeback <= dataMemReadData_memory;
-        addressDestReg_writeback <= addressDestReg_memory;
-        PCPlus4_writeback <= PCPlus4_memory;
+    always @ (posedge clk, posedge reset) begin
+        if (reset) begin
+            ALUResult_writeback <= 32'd0;
+            dataMemReadData_writeback <= 32'd0;
+            addressDestReg_writeback <= 5'd0;
+            PCPlus4_writeback <= 32'd0;
 
-        // segnali di controllo
-        RFWriteEnable_writeback <= RFWriteEnable_memory;
-        writebackSrc_writeback <= writebackSrc_memory;
+            // segnali di controllo
+            RFWriteEnable_writeback <= 1'd0;
+            writebackSrc_writeback <= 2'd0;
+        end else begin
+            ALUResult_writeback <= ALUResult_memory;
+            dataMemReadData_writeback <= dataMemReadData_memory;
+            addressDestReg_writeback <= addressDestReg_memory;
+            PCPlus4_writeback <= PCPlus4_memory;
+
+            // segnali di controllo
+            RFWriteEnable_writeback <= RFWriteEnable_memory;
+            writebackSrc_writeback <= writebackSrc_memory;
+        end
     end
 
     // ------------ WB stage ------------ //
