@@ -1,3 +1,4 @@
+# TOP = RegisterFile
 TOP = PipelinedRISCV
 
 SRCS = src/InstructionMem.v \

@@ -16,12 +16,12 @@ int n_fails  = 0;
 // Un ciclo di clock completo: clk=0 -> eval -> clk=1 -> eval
 void tick(VPipelinedRISCV& riscv, VerilatedVcdC& tfp) {
     // fronte di discesa
-    riscv.clk = 0;
+    riscv.clk = 1;
     riscv.eval();
     tfp.dump(sim_time);
     sim_time += 5;
     // fronte di salita
-    riscv.clk = 1;          
+    riscv.clk = 0;          
     riscv.eval();
     tfp.dump(sim_time);
     sim_time += 5;

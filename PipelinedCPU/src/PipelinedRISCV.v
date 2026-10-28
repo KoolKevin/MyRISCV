@@ -82,8 +82,8 @@ module PipelinedRISCV(
     RegisterFile rf (
         .clk(clk),
         .reset(reset),
-        .addressSourceReg1(instruction_decode[19:15]),
-        .addressSourceReg2(instruction_decode[24:20]),
+        .addressSourceReg1(addressSourceReg1_decode),
+        .addressSourceReg2(addressSourceReg2_decode),
         .addressDestReg(addressDestReg_writeback),
         .writeEnable(RFWriteEnable_writeback),
         .destRegData(writebackData),

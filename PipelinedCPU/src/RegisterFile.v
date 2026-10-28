@@ -13,27 +13,30 @@ module RegisterFile(
     reg [31:0] registers[31:0];
     integer i;
 
-    // in una cpu pipelined le scritture al RF avvengono nel primo semiperiodo
-    // mentre le letture nel secondo
-    always @(posedge clk, negedge clk, posedge reset) begin
-        if (reset) 
+    // in una cpu pipelined le scritture al RF (stadio di WB) avvengono nel 
+    // primo semiperiodo mentre le letture (stadio di ID) nel secondo
+    //
+    // più nello specifico, si ha che:
+    // - all'inizio del ciclo il pipeline register MEM/WB effettua il latch dei
+    //   segnali rendendoli disponibili alla logica di WB
+    // - a metà del ciclo (negedge) il RF campiona i segnali prodotti in WB 
+    //   effettuando la scrittura del registro in considerazione
+    // - di conseguenza, solamente nella seconda metà del ciclo le letture 
+    //  (combinatorie) al RF restituiscono il valore aggiornato del registro
+    //
+    // btw: nello schematico sul libro l'aggiornamento del RF al negedge viene
+    // indicato con la bolla che rappresenta la negazione sulla porta del RF
+    // associata al segnale di clk
+    always @(negedge clk, posedge reset) begin
+        if (reset)
             for (i = 0; i < 32; i = i+1)
                 registers[i] <= i[31:0]; // imposto ogni registro al proprio indice
-        else if (clk == 1 & writeEnable) 
+        else if (writeEnable)
             registers[addressDestReg] <= destRegData;
-        else if (clk == 0) begin
-            // register 0 hardwired to 0
-            if (addressSourceReg1 != 0)
-                sourceReg1Data <= registers[addressSourceReg1];
-            else
-                sourceReg1Data <= 0;
-
-            if (addressSourceReg2 != 0)
-                sourceReg2Data <= registers[addressSourceReg2];
-            else
-                sourceReg2Data <= 0;
-        end
     end
+
+    assign sourceReg1Data = (addressSourceReg1 == 0) ? 32'd0 : registers[addressSourceReg1];
+    assign sourceReg2Data = (addressSourceReg2 == 0) ? 32'd0 : registers[addressSourceReg2];
 
 endmodule
 

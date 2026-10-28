@@ -25,12 +25,12 @@ void check(int reg, uint32_t got1, uint32_t got2, uint32_t expected) {
 // Un ciclo di clock completo: clk=0 -> eval -> clk=1 -> eval
 void tick(VRegisterFile& rf, VerilatedVcdC& tfp) {
     // fronte di discesa
-    rf.clk = 0;
+    rf.clk = 1;
     rf.eval();
     tfp.dump(sim_time);
     sim_time += 5;
     // fronte di salita
-    rf.clk = 1;          
+    rf.clk = 0;          
     rf.eval();
     tfp.dump(sim_time);
     sim_time += 5;
@@ -90,6 +90,20 @@ int main(int argc, char** argv) {
         tick(rf, tfp);
 
         check(i, rf.sourceReg1Data, rf.sourceReg2Data, i * 10);
+    }
+
+    for (int i = 0; i < 32; i++) {
+        // Scrivo e leggo un registro contemporaneamente.
+        // Siccome, scrivo nel primo semiperiodo, e leggo nel secondo, dovrei
+        // riuscire a leggere il valore aggiornato
+        rf.writeEnable = 1;
+        rf.addressDestReg = i;
+        rf.destRegData = i*100;
+        rf.addressSourceReg1 = i;
+        rf.addressSourceReg2 = i;
+        tick(rf, tfp);
+
+        check(i, rf.sourceReg1Data, rf.sourceReg2Data, i * 100);
     }
     tfp.dump(sim_time); 
 

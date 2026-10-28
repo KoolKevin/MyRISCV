@@ -36,7 +36,9 @@ module ControlUnit(
             // ALUControl and, thus, the ALU operation.
             7'b0010011: controlSignals = 11'b1_00_1_0_00_0_10_0; // I-type (alu ops con immediato)
             7'b1101111: controlSignals = 11'b1_11_x_0_10_0_xx_1; // J-type (jal)
-            default: controlSignals = 11'bx_xx_x_x_xx_x_xx_x; // ???
+            // in caso di operazione non riconosciuta disabilito tutti i write
+            // enable in maniera tale da non cambiare lo stato per sbaglio 
+            default: controlSignals = 11'b0_xx_x_0_xx_x_xx_x;  
         endcase
 
     assign {RFWriteEnable, immSrc, ALUSrc2, dataMemWriteEnable, writebackSrc, isBranch, ALUOpClass, isJump} = controlSignals;

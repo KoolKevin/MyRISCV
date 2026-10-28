@@ -33,20 +33,36 @@ module HazardDetectionUnit(
     // it contains the more recently executed instruction
     always @(*) begin
         // forward from memory stage
-        if (((addressSourceReg1_execute == addressDestReg_memory) & RFWriteEnable_memory) & (addressSourceReg1_execute != 5'd0))
+        if (
+            (
+                (addressSourceReg1_execute == addressDestReg_memory) & RFWriteEnable_memory
+            ) & (addressSourceReg1_execute != 5'd0)
+        )
             forwardALUOperand1 = 2'b10;
         // forward from writeback stage
-        else if (((addressSourceReg1_execute == addressDestReg_writeback) & RFWriteEnable_writeback) & (addressSourceReg1_execute != 5'd0))
+        else if (
+            (
+                (addressSourceReg1_execute == addressDestReg_writeback) & RFWriteEnable_writeback
+            ) & (addressSourceReg1_execute != 5'd0)
+        )
             forwardALUOperand1 = 2'b01;
         // no forwarding, use RF output
         else
             forwardALUOperand1 = 2'b00;
 
         // forward from memory stage
-        if (((addressSourceReg2_execute == addressDestReg_memory) & RFWriteEnable_memory) & (addressSourceReg2_execute != 5'd0))
+        if (
+            (
+                (addressSourceReg2_execute == addressDestReg_memory) & RFWriteEnable_memory
+            ) & (addressSourceReg2_execute != 5'd0)
+        )
             forwardALUOperand2 = 2'b10;
         // forward from writeback stage
-        else if (((addressSourceReg2_execute == addressDestReg_writeback) & RFWriteEnable_writeback) & (addressSourceReg2_execute != 5'd0))
+        else if (
+            (
+                (addressSourceReg2_execute == addressDestReg_writeback) & RFWriteEnable_writeback
+            ) & (addressSourceReg2_execute != 5'd0)
+        )
             forwardALUOperand2 = 2'b01;
         // no forwarding, use RF output
         else
